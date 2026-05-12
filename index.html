@@ -595,23 +595,21 @@
         });
 
         // Init
-        document.addEventListener("DOMContentLoaded", () => {
-            const loader = document.getElementById('loader');
-            loader.style.opacity = '0';
-            setTimeout(() => {
-                loader.style.display = 'none';
-                
-                // Entrance animation
-                gsap.from(".hero-container > div > div", {
-                    y: 50, opacity: 0, duration: 1, stagger: 0.1, ease: "back.out(1.5)"
-                });
-                
-                gsap.from(canGroup.position, { y: -5, duration: 1.5, ease: "elastic.out(1, 0.5)", delay: 0.2 });
-                gsap.from(".bottom-nav", { y: 100, opacity: 0, duration: 1, delay: 0.5, ease: "power3.out" });
-                
-                animate();
-            }, 500);
-        };
+        const loader = document.getElementById('loader');
+        loader.style.opacity = '0';
+        setTimeout(() => {
+            loader.style.display = 'none';
+            
+            // Entrance animation
+            gsap.from(".hero-container > div > div", {
+                y: 50, opacity: 0, duration: 1, stagger: 0.1, ease: "back.out(1.5)"
+            });
+            
+            gsap.from(canGroup.position, { y: -5, duration: 1.5, ease: "elastic.out(1, 0.5)", delay: 0.2 });
+            gsap.from(".bottom-nav", { y: 100, opacity: 0, duration: 1, delay: 0.5, ease: "power3.out" });
+            
+            animate();
+        }, 500);
     </script>
 </body>
 </html>
