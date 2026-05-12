@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta id="viewport" name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // Force desktop mode on all small mobile displays
+        if (window.screen.width < 1024 || window.innerWidth < 1024) {
+            document.getElementById('viewport').setAttribute('content', 'width=1200');
+        }
+    </script>
+    <title>AQUA FRESH | 3D Drink Experience</title>
+    <!-- Three.js and GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Outfit:wght@300;500;700;900&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Background Crossfade system */
+        #bg-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+        }
+
+        .bg-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            transform: scale(1.08); /* Scales up slightly to hide AI watermarks in the corners */
+        }
+
+        .bg-layer.active {
+            opacity: 1;
+        }
+
+        /* Gradient overlay to ensure text remains readable and edges look cinematic */
+        .bg-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Top Nav */
+        header {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 2rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2.5rem;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            text-transform: uppercase;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .nav-links a:hover { opacity: 1; }
+        .nav-links a.active { opacity: 1; border-bottom: 2px solid white; padding-bottom: 4px; }
+
+        /* Typography behind Can */
+        .hero-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            pointer-events: none;
+            flex-direction: column;
+        }
+
+        .title-group {
+            display: flex;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+            gap: 20vw;
+            padding: 0 2vw;
+        }
+
+        .title-text {
+            font-family: 'Anton', sans-serif;
+            font-size: 11vw;
+            line-height: 1;
+            text-transform: uppercase;
+            text-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        #title-left { text-align: right; }
+        #title-right { text-align: left; }
+
+        .sub-group {
+            display: flex;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+            gap: 24vw;
+            margin-top: 3vw;
+        }
+
+        .sub-text {
+            font-size: 1.5vw;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-shadow: 0 5px 10px rgba(0,0,0,0.8);
+            flex: 1;
+            opacity: 0.9;
+        }
+
+        #sub-left { text-align: right; }
+        #sub-right { text-align: left; }
+
+        /* 3D Canvas */
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 10;
+        }
+
+        /* Glassmorphism Bottom Nav */
+        .bottom-nav {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 10px 15px;
+            display: flex;
+            gap: 15px;
+            z-index: 20;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+
+        .nav-item {
+            width: 65px; height: 65px;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            opacity: 0.4;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-item:hover { opacity: 0.9; transform: translateY(-5px); }
+        .nav-item.active {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.2), 0 5px 15px rgba(0,0,0,0.4);
+            transform: translateY(-5px);
+        }
+
+        .emoji-icon { font-size: 26px; margin-bottom: 5px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); line-height: 1; }
+        .nav-item:hover .emoji-icon { transform: scale(1.2); }
+        .nav-item span { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+        /* Loader */
+        #loader {
+            position: fixed; inset: 0; background: #050505;
+            z-index: 9999; display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease;
+        }
+        .spinner {
+            width: 60px; height: 60px;
+            border: 3px solid rgba(255,255,255,0.1); border-radius: 50%;
+            border-top-color: white; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header { padding: 1.5rem; }
+            .nav-links { display: none; }
+            .title-group { flex-direction: column; gap: 40vh; padding-top: 10vh; }
+            .title-text { font-size: 22vw; text-align: center !important; }
+            .sub-group { flex-direction: column; gap: 40vh; margin-top: -38vh; }
+            #sub-left, #sub-right { text-align: center !important; font-size: 4vw; }
+            .bottom-nav { gap: 5px; padding: 5px; bottom: 20px;}
+            .nav-item { width: 55px; height: 55px; }
+            .nav-item img { width: 22px; height: 22px; }
+            .nav-item span { font-size: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loader"><div class="spinner"></div></div>
+
+    <div id="bg-container">
+        <!-- Backgrounds populated via JS -->
+    </div>
+    <div class="bg-overlay"></div>
+
+    <header>
+        <div class="logo">AQUA<br>FRESH</div>
+        <div class="nav-links">
+            <a href="#" class="active">Drinks</a>
+            <a href="#">Shop</a>
+            <a href="#">Our Story</a>
+            <a href="#">Contact</a>
+        </div>
+    </header>
+
+    <div class="hero-container">
+        <div class="title-group">
+            <div class="title-text" id="title-left">CHERRY</div>
+            <div class="title-text" id="title-right">SPLASH</div>
+        </div>
+        <div class="sub-group">
+            <div class="sub-text" id="sub-left">REFRESHING CHERRY TASTE</div>
+            <div class="sub-text" id="sub-right">BOLD & SWEET</div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div class="bottom-nav" id="bottom-nav">
+        <!-- Generated dynamically based on data -->
+    </div>
+
+    <script>
+        const drinks = [
+            {
+                name: "Cherry",
+                leftTitle: "CHERRY", rightTitle: "SPLASH",
+                leftSub: "REFRESHING CHERRY TASTE", rightSub: "BOLD & SWEET",
+                bgImg: "cherry splash.png",
+                labelImg: "label/cherry.png",
+                icon: "🍒"
+            },
+            {
+                name: "Citrus",
+                leftTitle: "CITRUS", rightTitle: "BURST",
+                leftSub: "ZINGY ORANGE & LEMON", rightSub: "FRESH & TANGY",
+                bgImg: "citrus splash.png",
+                labelImg: "label/citrus.png",
+                icon: "🍊"
+            },
+            {
+                name: "Berry",
+                leftTitle: "BERRY", rightTitle: "BREEZE",
+                leftSub: "CRISP WILD BERRIES", rightSub: "FRESH & BREEZY",
+                bgImg: "berry splash.png",
+                labelImg: "label/berrry breeze.png",
+                icon: "🫐"
+            },
+            {
+                name: "Lime",
+                leftTitle: "LIME", rightTitle: "ZING",
+                leftSub: "TART & TANGY LIME", rightSub: "ZESTY & CRISP",
+                bgImg: "lemonsplash.png",
+                labelImg: "label/lime.png",
+                icon: "🍋"
+            },
+            {
+                name: "Grape",
+                leftTitle: "GRAPE", rightTitle: "GROOVE",
+                leftSub: "RICH CONCORD GRAPE", rightSub: "SMOOTH & DEEP",
+                bgImg: "grape splash.png",
+                labelImg: "label/grape.png",
+                icon: "🍇"
+            }
+        ];
+
+        let currentIndex = 0;
+        let isAnimating = false;
+        
+        // DOM Elements
+        const titleLeft = document.getElementById('title-left');
+        const titleRight = document.getElementById('title-right');
+        const subLeft = document.getElementById('sub-left');
+        const subRight = document.getElementById('sub-right');
+        const bottomNav = document.getElementById('bottom-nav');
+        const bgContainer = document.getElementById('bg-container');
+
+        // Populate Backgrounds
+        drinks.forEach((drink, i) => {
+            const bg = document.createElement('div');
+            bg.className = `bg-layer ${i === 0 ? 'active' : ''}`;
+            bg.style.backgroundImage = `url('${drink.bgImg}')`;
+            bg.id = `bg-${i}`;
+            bgContainer.appendChild(bg);
+        });
+
+        // Populate Nav
+        drinks.forEach((drink, i) => {
+            const div = document.createElement('div');
+            div.className = `nav-item ${i === 0 ? 'active' : ''}`;
+            div.dataset.index = i;
+            div.innerHTML = `
+                <div class="emoji-icon">${drink.icon}</div>
+                <span>${drink.name}</span>
+            `;
+            bottomNav.appendChild(div);
+        });
+        const navItems = document.querySelectorAll('.nav-item');
+
+        // Three.js Setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0, 14);
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        // Realistic tone mapping
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        renderer.outputEncoding = THREE.sRGBEncoding; // ensure textures look correct
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const spotLight = new THREE.SpotLight(0xffffff, 3);
+        spotLight.position.set(5, 10, 8);
+        spotLight.angle = Math.PI / 6;
+        spotLight.penumbra = 0.5;
+        scene.add(spotLight);
+
+        const fillLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        fillLight.position.set(-5, 0, 5);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0xffffff, 2);
+        rimLight.position.set(0, 5, -10);
+        scene.add(rimLight);
+
+        const canGroup = new THREE.Group();
+        scene.add(canGroup);
+
+        // Preload Image Textures with High Quality
+        const textureLoader = new THREE.TextureLoader();
+        const textures = drinks.map(drink => {
+            const tex = textureLoader.load(drink.labelImg);
+            
+            // Maximum quality settings for the texture
+            tex.encoding = THREE.sRGBEncoding;
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            tex.minFilter = THREE.LinearMipmapLinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = true;
+            
+            return tex;
+        });
+
+        // Materials
+        const silverMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0xcccccc, 
+            metalness: 1.0, 
+            roughness: 0.2,
+            clearcoat: 0.8,
+            clearcoatRoughness: 0.2
+        });
+        
+        // Main Label Material (starts with index 0)
+        const labelMat = new THREE.MeshPhysicalMaterial({ 
+            map: textures[0], 
+            metalness: 0.3,
+            roughness: 0.4,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1,
+            reflectivity: 0.8
+        });
+
+        // Build Can Geometry
+        const bodyGeo = new THREE.CylinderGeometry(1.5, 1.5, 5, 64);
+        
+        // The texture's center (u=0.5) is on the back by default.
+        // We rotate the cylinder by 180 degrees (Math.PI) so the center of the image faces the camera.
+        const bodyMesh = new THREE.Mesh(bodyGeo, labelMat);
+        bodyMesh.rotation.y = Math.PI; 
+        
+        canGroup.add(bodyMesh);
+
+        // Top Rim
+        const topRimGeo = new THREE.TorusGeometry(1.4, 0.1, 32, 64);
+        const topRimMesh = new THREE.Mesh(topRimGeo, silverMat);
+        topRimMesh.position.y = 2.5;
+        topRimMesh.rotation.x = Math.PI / 2;
+        canGroup.add(topRimMesh);
+
+        // Top Lid
+        const lidGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.05, 64);
+        const lidMesh = new THREE.Mesh(lidGeo, silverMat);
+        lidMesh.position.y = 2.47;
+        canGroup.add(lidMesh);
+
+        // Bottom Rim
+        const botRimGeo = new THREE.TorusGeometry(1.4, 0.1, 32, 64);
+        const botRimMesh = new THREE.Mesh(botRimGeo, silverMat);
+        botRimMesh.position.y = -2.5;
+        botRimMesh.rotation.x = Math.PI / 2;
+        canGroup.add(botRimMesh);
+
+        // Bottom Base
+        const baseGeo = new THREE.CylinderGeometry(1.4, 1.3, 0.2, 64);
+        const baseMesh = new THREE.Mesh(baseGeo, silverMat);
+        baseMesh.position.y = -2.6;
+        canGroup.add(baseMesh);
+
+        // Interaction
+        let time = 0;
+        let mouseX = 0, mouseY = 0;
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.015;
+            
+            if(!isAnimating) {
+                // Gentle floating
+                canGroup.position.y = Math.sin(time) * 0.2;
+                // Subtle rotation tracking mouse
+                canGroup.rotation.y += (mouseX * 0.4 - canGroup.rotation.y) * 0.05;
+                canGroup.rotation.x += (mouseY * 0.2 - canGroup.rotation.x) * 0.05;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // The Mindblowing Transition Animation
+        function changeDrink(index, direction) {
+            if (index === currentIndex) return;
+            isAnimating = true;
+            const drink = drinks[index];
+            
+            // Update UI Nav
+            navItems.forEach(nav => nav.classList.remove('active'));
+            navItems[index].classList.add('active');
+
+            // 1. Text Fly Out
+            gsap.to([titleLeft, subLeft], { x: -window.innerWidth, opacity: 0, duration: 0.5, ease: "power2.in" });
+            gsap.to([titleRight, subRight], { x: window.innerWidth, opacity: 0, duration: 0.5, ease: "power2.in" });
+            
+            // 2. Can Spin & Flip
+            const timeline = gsap.timeline({
+                onComplete: () => {
+                    isAnimating = false;
+                    currentIndex = index;
+                }
+            });
+
+            timeline.to(canGroup.scale, { x: 0.6, y: 0.6, z: 0.6, duration: 0.3, ease: "power1.inOut" }, 0);
+            
+            // Spin 180 degrees to hide label
+            timeline.to(canGroup.rotation, { 
+                y: canGroup.rotation.y + Math.PI, 
+                z: direction > 0 ? -0.3 : 0.3, // dynamic tilt
+                x: direction > 0 ? 0.2 : -0.2,
+                duration: 0.4, 
+                ease: "power2.in",
+                onComplete: () => {
+                    // Swap texture while back is facing us
+                    labelMat.map = textures[index];
+                    labelMat.needsUpdate = true;
+                    
+                    // Crossfade Backgrounds
+                    document.querySelectorAll('.bg-layer').forEach(el => el.classList.remove('active'));
+                    document.getElementById(`bg-${index}`).classList.add('active');
+
+                    // Setup new text
+                    titleLeft.textContent = drink.leftTitle;
+                    titleRight.textContent = drink.rightTitle;
+                    subLeft.textContent = drink.leftSub;
+                    subRight.textContent = drink.rightSub;
+
+                    // Position elements on opposite side for fly in
+                    gsap.set([titleLeft, subLeft], { x: window.innerWidth });
+                    gsap.set([titleRight, subRight], { x: -window.innerWidth });
+                }
+            }, 0);
+
+            // Spin remaining 180 degrees (to full 360) and fly elements in
+            timeline.to(canGroup.rotation, {
+                y: canGroup.rotation.y + Math.PI * 2,
+                z: 0,
+                x: 0,
+                duration: 0.6,
+                ease: "back.out(1.5)"
+            }, 0.4);
+
+            timeline.to(canGroup.scale, { x: 1, y: 1, z: 1, duration: 0.6, ease: "elastic.out(1, 0.5)" }, 0.4);
+
+            // Fly text in
+            timeline.to([titleLeft, subLeft, titleRight, subRight], {
+                x: 0, opacity: 1, duration: 0.6, ease: "back.out(1.2)", stagger: 0.05
+            }, 0.5);
+        }
+
+        // Scroll Handling
+        window.addEventListener('wheel', (e) => {
+            if (isAnimating) return;
+            if (Math.abs(e.deltaY) > 30) {
+                if (e.deltaY > 0) {
+                    const nextIndex = (currentIndex + 1) % drinks.length;
+                    changeDrink(nextIndex, 1);
+                } else if (e.deltaY < 0) {
+                    const prevIndex = (currentIndex - 1 + drinks.length) % drinks.length;
+                    changeDrink(prevIndex, -1);
+                }
+            }
+        });
+
+        // Touch handling
+        let touchStartY = 0;
+        window.addEventListener('touchstart', (e) => touchStartY = e.touches[0].clientY, { passive: false });
+        window.addEventListener('touchmove', (e) => {
+            if (isAnimating) { e.preventDefault(); return; }
+            let touchEndY = e.touches[0].clientY;
+            let deltaY = touchStartY - touchEndY;
+            
+            if (Math.abs(deltaY) > 50) {
+                if (deltaY > 0) {
+                    const nextIndex = (currentIndex + 1) % drinks.length;
+                    changeDrink(nextIndex, 1);
+                } else if (deltaY < 0) {
+                    const prevIndex = (currentIndex - 1 + drinks.length) % drinks.length;
+                    changeDrink(prevIndex, -1);
+                }
+                touchStartY = touchEndY;
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        // Bottom Nav Clicks
+        navItems.forEach((item, index) => {
+            item.addEventListener('click', () => {
+                if (!isAnimating && index !== currentIndex) {
+                    const dir = index > currentIndex ? 1 : -1;
+                    changeDrink(index, dir);
+                }
+            });
+        });
+
+        // Init
+        window.onload = () => {
+            const loader = document.getElementById('loader');
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                loader.style.display = 'none';
+                
+                // Entrance animation
+                gsap.from(".hero-container > div > div", {
+                    y: 50, opacity: 0, duration: 1, stagger: 0.1, ease: "back.out(1.5)"
+                });
+                
+                gsap.from(canGroup.position, { y: -5, duration: 1.5, ease: "elastic.out(1, 0.5)", delay: 0.2 });
+                gsap.from(".bottom-nav", { y: 100, opacity: 0, duration: 1, delay: 0.5, ease: "power3.out" });
+                
+                animate();
+            }, 500);
+        };
+    </script>
+</body>
+</html>
